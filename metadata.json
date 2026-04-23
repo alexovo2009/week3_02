@@ -1,0 +1,6 @@
+{
+  "name": "校園美食評分",
+  "description": "一個專為學生設計的校園美食評分與分享平台，支援匿名食評、排行榜、收藏及多維度評分。",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校園美食評分 - HTML版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .fab-shadow {
+            box-shadow: 0 20px 40px -10px rgba(234, 88, 12, 0.3);
+        }
+
+        .category-scroll {
+            mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+        }
+        
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+        }
+        
+        .masonry-grid {
+            column-count: 1;
+            column-gap: 1.5rem;
+        }
+        
+        @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ea580c',
+                        secondary: '#f97316',
+                        'text-main': '#1e293b',
+                        'text-sub': '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-text-main min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3">
+        <div class="max-w-7xl mx-auto space-y-4">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl font-black tracking-tight text-primary flex items-center gap-2">
+                        <span>🍜</span>
+                        <span class="hidden sm:block">校園美食評分</span>
+                    </h1>
+                </div>
+
+                <div class="flex-1 max-w-md relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-text-sub w-4 h-4"></i>
+                    <input 
+                        type="text" 
+                        id="searchInput"
+                        placeholder="搜尋特定菜名 (如：排骨飯)..."
+                        class="w-full pl-10 pr-4 bg-gray-100/50 border-none rounded-full h-10 focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                    >
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-xl shadow-sm border-2 border-white">
+                        <span>👨‍🎓</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-1">
+                <div id="categoryContainer" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+                    <!-- Categories will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto w-full px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+            
+            <!-- Left Content -->
+            <div class="space-y-8">
+                <!-- Tab Switcher -->
+                <div class="flex justify-start">
+                    <div class="bg-white p-1 rounded-full border border-gray-100 shadow-sm flex gap-1">
+                        <button id="tabFeed" onclick="switchTab('feed')" class="px-6 py-2 rounded-full font-bold text-sm transition-all bg-primary text-white">🔥 最新食評</button>
+                        <button id="tabBookmarks" onclick="switchTab('bookmarks')" class="px-6 py-2 rounded-full font-bold text-sm transition-all text-text-sub hover:bg-gray-50">🔖 我的收藏</button>
+                    </div>
+                </div>
+
+                <!-- List Container -->
+                <div id="listContainer" class="masonry-grid">
+                    <!-- Cards will be injected here -->
+                </div>
+
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-text-sub space-y-4">
+                    <i data-lucide="utensils-crossed" class="w-12 h-12 opacity-20"></i>
+                    <p class="font-bold">尚未發現美食，快來分享你的第一篇食評吧！</p>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <aside class="space-y-8">
+                
+                <!-- Status Filters -->
+                <div class="bg-white/50 backdrop-blur-sm p-5 rounded-[32px] border border-gray-100 shadow-xl shadow-orange-900/5 transition-all hover:shadow-2xl hover:shadow-orange-900/10">
+                    <h3 class="text-xs font-black text-text-sub uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                        狀態快速篩選
+                    </h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="flex flex-col items-center gap-3 group">
+                            <button onclick="setStatusFilter('active')" id="filterActive" class="w-full aspect-square rounded-2xl transition-all border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-sky-200 hover:shadow-lg hover:shadow-sky-500/10">
+                                <span class="text-2xl transform group-hover:scale-110 transition-transform">⚡</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest text-text-sub">Active</span>
+                            </button>
+                            <div class="px-3 py-1 bg-sky-50 text-[10px] font-black text-sky-600 rounded-full border border-sky-100" id="statActive">Active: 0</div>
+                        </div>
+                        <div class="flex flex-col items-center gap-3 group">
+                            <button onclick="setStatusFilter('done')" id="filterDone" class="w-full aspect-square rounded-2xl transition-all border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 active:scale-95 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/10">
+                                <span class="text-2xl transform group-hover:scale-110 transition-transform">✅</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest text-text-sub">Done</span>
+                            </button>
+                            <div class="px-3 py-1 bg-emerald-50 text-[10px] font-black text-emerald-600 rounded-full border border-emerald-100" id="statDone">Done: 0</div>
+                        </div>
+                        <div class="flex flex-col items-center gap-3 group">
+                            <button onclick="setStatusFilter('全部')" id="filterAll" class="w-full aspect-square rounded-2xl transition-all border-none bg-slate-800 text-white flex flex-col items-center justify-center gap-1 active:scale-95 shadow-xl shadow-slate-900/20">
+                                <span class="text-2xl transform group-hover:scale-110 transition-transform">📑</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest opacity-70">全部</span>
+                            </button>
+                            <div class="px-3 py-1 bg-slate-100 text-[10px] font-black text-slate-600 rounded-full border border-slate-200" id="statTotal">Total: 0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div id="statsCard" class="bg-white rounded-[32px] p-6 border border-gray-100 shadow-xl shadow-primary/5 space-y-6 relative overflow-hidden group">
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl"></div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-primary to-orange-400 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                            <i data-lucide="list-todo" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-text-main leading-none">美食打卡清單</h3>
+                            <p class="text-[11px] text-text-sub font-bold uppercase tracking-wider mt-1" id="userRank">美食大師</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3" id="userStatsGrid">
+                        <!-- Stats Items -->
+                    </div>
+                    <!-- Progress -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-end justify-between">
+                             <p class="text-xs font-black text-text-main">食評打卡進度</p>
+                             <span class="text-2xl font-black text-primary" id="progressPercent">0%</span>
+                        </div>
+                        <div class="relative h-4 bg-gray-100 rounded-full overflow-hidden p-1 shadow-inner">
+                            <div id="progressBar" class="h-full bg-gradient-to-r from-primary to-orange-400 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm space-y-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-yellow-400 text-white rounded-xl flex items-center justify-center shadow-lg">
+                            <i data-lucide="trophy" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-black">餐廳排行榜 (Top 6)</h3>
+                    </div>
+                    <div id="leaderboardList" class="space-y-3">
+                        <!-- Leaderboard items -->
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- FAB -->
+    <button onclick="openModal()" class="fixed bottom-10 right-10 bg-primary text-white px-8 py-4 rounded-full font-black text-lg flex items-center gap-2 fab-shadow hover:scale-105 transition-transform z-40">
+        <span>✍️</span> 發布食評
+    </button>
+
+    <!-- Modal Form -->
+    <div id="reviewModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-6 right-6 p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors z-10">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            
+            <div class="p-8">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-black tracking-tight flex items-center gap-3">
+                        <span class="text-4xl">📝</span> 發布食評
+                    </h2>
+                    <p class="text-text-sub font-bold mt-2 uppercase tracking-widest text-xs">Share your food experience</p>
+                </div>
+
+                <form id="reviewForm" onsubmit="handleFormSubmit(event)" class="space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                             <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">餐廳名稱</label>
+                             <input type="text" name="restaurantName" required placeholder="例如：學生第一食堂" class="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary/20 outline-none transition-all font-bold">
+                        </div>
+                        <div class="space-y-2">
+                             <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">菜品名稱</label>
+                             <input type="text" name="dishName" required placeholder="例如：經典叉燒飯" class="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary/20 outline-none transition-all font-bold">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">美食分類</label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="inline-block">
+                                <input type="radio" name="category" value="食堂區" id="cat-1" class="hidden peer" required>
+                                <label for="cat-1" class="px-6 py-2.5 rounded-full bg-white border-2 border-slate-100 text-sm font-black text-slate-400 cursor-pointer transition-all peer-checked:bg-[#FF7D29] peer-checked:text-white peer-checked:border-[#FF7D29] hover:bg-slate-50">食堂區</label>
+                            </div>
+                            
+                            <div class="inline-block">
+                                <input type="radio" name="category" value="校外一條街" id="cat-2" class="hidden peer" required>
+                                <label for="cat-2" class="px-6 py-2.5 rounded-full bg-white border-2 border-slate-100 text-sm font-black text-slate-400 cursor-pointer transition-all peer-checked:bg-[#FFBF00] peer-checked:text-white peer-checked:border-[#FFBF00] hover:bg-slate-50">校外一條街</label>
+                            </div>
+                            
+                            <div class="inline-block">
+                                <input type="radio" name="category" value="外送" id="cat-3" class="hidden peer" required>
+                                <label for="cat-3" class="px-6 py-2.5 rounded-full bg-white border-2 border-slate-100 text-sm font-black text-slate-400 cursor-pointer transition-all peer-checked:bg-[#3ABEF9] peer-checked:text-white peer-checked:border-[#3ABEF9] hover:bg-slate-50">外送</label>
+                            </div>
+                            
+                            <div class="inline-block">
+                                <input type="radio" name="category" value="甜品飲料" id="cat-4" class="hidden peer" required>
+                                <label for="cat-4" class="px-6 py-2.5 rounded-full bg-white border-2 border-slate-100 text-sm font-black text-slate-400 cursor-pointer transition-all peer-checked:bg-[#FD5D5D] peer-checked:text-white peer-checked:border-[#FD5D5D] hover:bg-slate-50">甜品飲料</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">心得評論</label>
+                        <textarea name="content" required placeholder="說說這份美食的驚艷或槽點吧..." rows="3" class="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-primary/20 outline-none transition-all font-medium resize-none"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="space-y-3">
+                            <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">美味程度</label>
+                            <div class="flex gap-1" data-rating-input="taste">
+                                <input type="hidden" name="taste" value="3">
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="1"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="2"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="3"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="4"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="5"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">性價比</label>
+                            <div class="flex gap-1" data-rating-input="value">
+                                <input type="hidden" name="value" value="3">
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="1"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="2"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="3"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="4"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="5"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-xs font-black text-text-sub uppercase tracking-wider block ml-1">環境服務</label>
+                            <div class="flex gap-1" data-rating-input="environment">
+                                <input type="hidden" name="environment" value="3">
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="1"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="2"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-yellow-400 fill-current" data-value="3"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="4"></i>
+                                <i data-lucide="star" class="w-6 h-6 cursor-pointer star-input text-gray-200" data-value="5"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-5 bg-primary text-white rounded-3xl font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                        🚀 發布美味食評
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let currentStatusFilter = '全部';
+        let currentCategory = '全部';
+        let activeTab = 'feed';
+        let searchQuery = '';
+        let openComments = new Set(); // Track expanded comment sections
+        let userLikes = JSON.parse(localStorage.getItem('likes') || '[]');
+        let userBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+
+        const categories = ['全部', '食堂區', '校外一條街', '外送', '甜品飲料'];
+
+        // --- Core Functions (Required) ---
+        
+        function loadData() {
+            try {
+                const data = localStorage.getItem('records');
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error("Failed to load records", e);
+                return [];
+            }
+        }
+
+        function saveData(newRecord) {
+            const records = loadData();
+            records.unshift(newRecord);
+            localStorage.setItem('records', JSON.stringify(records));
+            renderList();
+            updateStats();
+        }
+
+        function updateRecord(updatedRecord) {
+            const records = loadData();
+            const index = records.findIndex(r => r.id === updatedRecord.id);
+            if (index !== -1) {
+                records[index] = updatedRecord;
+                localStorage.setItem('records', JSON.stringify(records));
+                renderList();
+                updateStats();
+            }
+        }
+
+        function deleteRecord(id) {
+            const records = loadData().filter(r => r.id !== id);
+            localStorage.setItem('records', JSON.stringify(records));
+            renderList();
+            updateStats();
+        }
+
+        function renderList() {
+            const records = loadData();
+            const listContainer = document.getElementById('listContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            // Filtering
+            const filtered = records.filter(r => {
+                const matchesSearch = r.dishName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                     r.restaurantName.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesCategory = currentCategory === '全部' || r.category === currentCategory;
+                const matchesStatus = currentStatusFilter === '全部' || r.status === currentStatusFilter;
+                const matchesTab = activeTab === 'feed' || userBookmarks.includes(r.id);
+                
+                return matchesSearch && matchesCategory && matchesStatus && matchesTab;
+            });
+
+            listContainer.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(r => {
+                    const card = createReviewCard(r);
+                    listContainer.appendChild(card);
+                });
+            }
+
+            // Refresh icons
+            lucide.createIcons();
+            renderCategories();
+            renderStatsCount();
+            renderLeaderboard();
+        }
+
+        // --- UI Helpers ---
+
+        function createReviewCard(review) {
+            const div = document.createElement('div');
+            div.className = 'masonry-item group bg-white rounded-[40px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden relative active:scale-[0.98]';
+            
+            const isLiked = userLikes.includes(review.id);
+            const isBookmarked = userBookmarks.includes(review.id);
+            const isDone = review.status === 'done';
+            const isCommentsOpen = openComments.has(review.id);
+
+            div.innerHTML = `
+                <div class="p-6 space-y-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0 pr-10">
+                            <h3 class="text-xl font-black text-text-main line-clamp-1 group-hover:text-primary transition-colors">${review.dishName}</h3>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary/40"></span>
+                                <p class="text-sm font-bold text-text-sub truncate">${review.restaurantName}</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleBookmark('${review.id}')" class="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center transition-all ${isBookmarked ? 'bg-orange-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:scale-110'}">
+                            <i data-lucide="bookmark" class="w-5 h-5 ${isBookmarked ? 'fill-current' : ''}"></i>
+                        </button>
+                    </div>
+
+                    <p class="text-sm text-slate-600 leading-relaxed font-medium line-clamp-3">${review.content}</p>
+
+                    <div class="flex flex-wrap gap-2 py-2">
+                        <span class="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-full uppercase tracking-widest">${review.category}</span>
+                        <div class="flex items-center gap-1 px-2.5 py-1 bg-secondary/10 text-secondary text-[10px] font-mono font-bold rounded-full border border-secondary/5">
+                            <i data-lucide="star" class="w-3 h-3 fill-current"></i>
+                            <span>${review.averageRating.toFixed(1)}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-50">
+                        <div class="flex items-center gap-3">
+                            <button onclick="toggleLike('${review.id}')" class="flex items-center gap-1.5 text-xs font-black transition-colors ${isLiked ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}">
+                                <i data-lucide="heart" class="w-4 h-4 ${isLiked ? 'fill-current' : ''}"></i>
+                                <span>${(review.likes || []).length}</span>
+                            </button>
+                            <button onclick="toggleComments('${review.id}')" class="flex items-center gap-1.5 text-xs font-black ${isCommentsOpen ? 'text-primary' : 'text-slate-400'} hover:text-primary transition-colors">
+                                <i data-lucide="message-square" class="w-4 h-4"></i>
+                                <span>${(review.comments || []).length}</span>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <button onclick="deleteRecord('${review.id}')" class="p-2 text-slate-300 hover:text-red-400 transition-colors">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="toggleStatus('${review.id}')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${isDone ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-gray-50 text-slate-400 hover:bg-gray-100'}">
+                                <i data-lucide="${isDone ? 'check-circle-2' : 'circle'}" class="w-4 h-4"></i>
+                                <span>${isDone ? '已打卡' : '點我打卡'}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div id="comments-${review.id}" class="${isCommentsOpen ? '' : 'hidden'} pt-4 border-t border-gray-50 space-y-4">
+                        <div class="space-y-3 max-h-40 overflow-y-auto no-scrollbar">
+                            ${(review.comments || []).map(c => `
+                                <div class="bg-gray-50 p-3 rounded-2xl">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-[10px] font-black text-primary uppercase tracking-wider">${c.authorName}</span>
+                                        <span class="text-[9px] text-slate-300">${new Date(c.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <p class="text-xs text-slate-600 font-medium">${c.content}</p>
+                                </div>
+                            `).join('')}
+                            ${(review.comments || []).length === 0 ? '<p class="text-[10px] text-text-sub italic text-center py-2">還沒有留言...</p>' : ''}
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="comment-input-${review.id}" placeholder="寫下你的評論..." class="w-full pl-4 pr-12 py-2.5 bg-gray-100 border-none rounded-xl text-xs font-bold outline-none focus:ring-1 focus:ring-primary/20 transition-all">
+                            <button onclick="addComment('${review.id}')" class="absolute right-2 top-1/2 -translate-y-1/2 text-primary p-1.5 hover:scale-110 transition-transform">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return div;
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('categoryContainer');
+            container.innerHTML = '';
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                const active = currentCategory === cat;
+                const colors = {
+                    '食堂區': 'bg-[#FF7D29] text-white',
+                    '校外一條街': 'bg-[#FFBF00] text-white',
+                    '外送': 'bg-[#3ABEF9] text-white',
+                    '甜品飲料': 'bg-[#FD5D5D] text-white',
+                    '全部': 'bg-primary text-white'
+                };
+                
+                btn.className = `px-5 py-2 rounded-full whitespace-nowrap font-bold text-sm transition-all border border-transparent shadow-sm ${active ? (colors[cat] || 'bg-primary text-white') : 'bg-white text-text-main border-gray-100 hover:bg-gray-50'}`;
+                btn.textContent = cat === '全部' ? '🔥 全部美食' : cat;
+                btn.onclick = () => {
+                    currentCategory = cat;
+                    renderList();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderStatsCount() {
+            const records = loadData();
+            const activeCount = records.filter(r => r.status === 'active').length;
+            const doneCount = records.filter(r => r.status === 'done').length;
+            const totalCount = records.length;
+
+            document.getElementById('statActive').textContent = `Active: ${activeCount}`;
+            document.getElementById('statDone').textContent = `Done: ${doneCount}`;
+            document.getElementById('statTotal').textContent = `Total: ${totalCount}`;
+
+            // Button highlights - reset first
+            ['filterActive', 'filterDone', 'filterAll'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.classList.remove('bg-sky-500', 'bg-emerald-500', 'bg-slate-800', 'text-white', 'border-sky-500', 'border-emerald-500', 'border-slate-800');
+                if (id !== 'filterAll') btn.classList.add('bg-white', 'text-text-sub', 'border-gray-100');
+            });
+            
+            if (currentStatusFilter === 'active') {
+                document.getElementById('filterActive').classList.add('bg-sky-500', 'text-white', 'border-sky-500');
+                document.getElementById('filterActive').classList.remove('bg-white', 'text-text-sub', 'border-gray-100');
+            } else if (currentStatusFilter === 'done') {
+                document.getElementById('filterDone').classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+                document.getElementById('filterDone').classList.remove('bg-white', 'text-text-sub', 'border-gray-100');
+            } else if (currentStatusFilter === '全部') {
+                document.getElementById('filterAll').classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+            }
+        }
+
+        function updateStats() {
+            const records = loadData();
+            const bookmarkedRecords = records.filter(r => userBookmarks.includes(r.id));
+            const doneCount = records.filter(r => r.status === 'done').length;
+            const likedCount = userLikes.length;
+            const bookmarkedCount = userBookmarks.length;
+            
+            // Progress Percent based on Bookmarked
+            const doneBookmarksCount = bookmarkedRecords.filter(r => r.status === 'done').length;
+            const percent = bookmarkedCount > 0 ? Math.round((doneBookmarksCount / bookmarkedCount) * 100) : 0;
+            
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            
+            const userRank = getRank(percent);
+            document.getElementById('userRank').textContent = userRank;
+
+            const grid = document.getElementById('userStatsGrid');
+            grid.innerHTML = `
+                <div class="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 group/item">
+                    <p class="text-[10px] font-black text-slate-600 mb-1 uppercase tracking-widest opacity-80">已收藏</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-slate-600 tracking-tight">${bookmarkedCount}</span>
+                        <span class="text-[10px] font-bold text-slate-400">筆</span>
+                    </div>
+                </div>
+                <div class="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100 group/item">
+                    <p class="text-[10px] font-black text-emerald-600 mb-1 uppercase tracking-widest opacity-80">已打卡</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-emerald-600 tracking-tight">${doneCount}</span>
+                        <span class="text-[10px] font-bold text-emerald-400">間</span>
+                    </div>
+                </div>
+                 <div class="bg-rose-50/50 rounded-2xl p-4 border border-rose-100 group/item">
+                    <p class="text-[10px] font-black text-rose-600 mb-1 uppercase tracking-widest opacity-80">已點讚</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-rose-600 tracking-tight">${likedCount}</span>
+                        <span class="text-[10px] font-bold text-rose-400">次</span>
+                    </div>
+                </div>
+                <div class="bg-amber-50/50 rounded-2xl p-4 border border-amber-100 group/item">
+                    <p class="text-[10px] font-black text-amber-600 mb-1 uppercase tracking-widest opacity-80">已留言</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-3xl font-black text-amber-600 tracking-tight">${records.reduce((acc, r) => acc + (r.comments ? r.comments.length : 0), 0)}</span>
+                        <span class="text-[10px] font-bold text-amber-400">次</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getRank(percent) {
+            if (percent === 100) return '食神大師';
+            if (percent >= 80) return '校園饕客';
+            if (percent >= 50) return '美食達人';
+            if (percent >= 20) return '美食新手';
+            return '美食探險家';
+        }
+
+        function renderLeaderboard() {
+            const records = loadData();
+            const restaurantStats = {};
+
+            records.forEach(r => {
+                if (!restaurantStats[r.restaurantName]) {
+                    restaurantStats[r.restaurantName] = { total: 0, count: 0 };
+                }
+                restaurantStats[r.restaurantName].total += r.averageRating;
+                restaurantStats[r.restaurantName].count += 1;
+            });
+
+            const top6 = Object.entries(restaurantStats)
+                .map(([name, stats]) => ({
+                    name,
+                    avg: stats.total / stats.count,
+                    count: stats.count
+                }))
+                .sort((a, b) => b.avg - a.avg)
+                .slice(0, 6);
+
+            const container = document.getElementById('leaderboardList');
+            container.innerHTML = '';
+
+            top6.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-black shadow-sm">${i + 1}</div>
+                        <div>
+                            <p class="font-black text-sm truncate w-32">${item.name}</p>
+                            <p class="text-[10px] text-text-sub font-bold uppercase">${item.count} 條點評</p>
+                        </div>
+                    </div>
+                    <div class="bg-primary/10 text-primary px-3 py-1 rounded-lg font-mono font-bold text-xs flex items-center gap-1">
+                        <i data-lucide="star" class="w-3 h-3 fill-current"></i>
+                        <span>${item.avg.toFixed(1)}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            if (top6.length === 0) {
+                container.innerHTML = '<p class="text-center text-xs text-text-sub italic">數據收集中心...</p>';
+            }
+            lucide.createIcons();
+        }
+
+        // --- Interaction Logic ---
+
+        function setStatusFilter(status) {
+            currentStatusFilter = status;
+            renderList();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('tabFeed').className = `px-6 py-2 rounded-full font-bold text-sm transition-all ${tab === 'feed' ? 'bg-primary text-white' : 'text-text-sub hover:bg-gray-50'}`;
+            document.getElementById('tabBookmarks').className = `px-6 py-2 rounded-full font-bold text-sm transition-all ${tab === 'bookmarks' ? 'bg-primary text-white' : 'text-text-sub hover:bg-gray-50'}`;
+            renderList();
+        }
+
+        function toggleLike(id) {
+            const index = userLikes.indexOf(id);
+            const records = loadData();
+            const review = records.find(r => r.id === id);
+            if (!review) return;
+
+            if (index === -1) {
+                userLikes.push(id);
+                review.likes = [...(review.likes || []), "user"];
+            } else {
+                userLikes.splice(index, 1);
+                review.likes = (review.likes || []).filter(l => l !== "user");
+            }
+            
+            localStorage.setItem('likes', JSON.stringify(userLikes));
+            updateRecord(review);
+        }
+
+        function toggleBookmark(id) {
+            const index = userBookmarks.indexOf(id);
+            if (index === -1) {
+                userBookmarks.push(id);
+            } else {
+                userBookmarks.splice(index, 1);
+            }
+            localStorage.setItem('bookmarks', JSON.stringify(userBookmarks));
+            renderList();
+            updateStats();
+        }
+
+        function toggleStatus(id) {
+            const records = loadData();
+            const r = records.find(item => item.id === id);
+            if (r) {
+                r.status = r.status === 'done' ? 'active' : 'done';
+                updateRecord(r);
+            }
+        }
+
+        function openModal() {
+            document.getElementById('reviewModal').classList.remove('hidden');
+            lucide.createIcons();
+            initStarRating();
+        }
+
+        function closeModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+        }
+
+        function initStarRating() {
+            const containers = document.querySelectorAll('[data-rating-input]');
+            containers.forEach(container => {
+                const input = container.querySelector('input');
+                
+                // Use event delegation on the container
+                container.onclick = (e) => {
+                    // Look for the clicked element or its parent with .star-input
+                    const star = e.target.closest('.star-input');
+                    if (!star) return;
+
+                    const val = parseInt(star.getAttribute('data-value'));
+                    input.value = val;
+                    
+                    // Update visual state of all stars in this container
+                    const allStars = container.querySelectorAll('.star-input');
+                    allStars.forEach(s => {
+                        const sVal = parseInt(s.getAttribute('data-value'));
+                        if (sVal <= val) {
+                            s.classList.add('text-yellow-400', 'fill-current');
+                            s.classList.remove('text-gray-200');
+                        } else {
+                            s.classList.remove('text-yellow-400', 'fill-current');
+                            s.classList.add('text-gray-200');
+                        }
+                    });
+                };
+            });
+        }
+
+        function toggleComments(id) {
+            if (openComments.has(id)) {
+                openComments.delete(id);
+            } else {
+                openComments.add(id);
+            }
+            renderList();
+        }
+
+        function addComment(reviewId) {
+            const input = document.getElementById(`comment-input-${reviewId}`);
+            const content = input.value.trim();
+            if (!content) return;
+
+            const records = loadData();
+            const review = records.find(r => r.id === reviewId);
+            if (!review) return;
+
+            const newComment = {
+                id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                content,
+                authorName: "匿名同學",
+                createdAt: new Date().toISOString()
+            };
+
+            if (!review.comments) review.comments = [];
+            review.comments.push(newComment);
+            
+            updateRecord(review);
+            input.value = '';
+            
+            // Re-open comments section if it was hidden (though it should be visible if they just typed)
+            setTimeout(() => {
+                const section = document.getElementById(`comments-${reviewId}`);
+                section.classList.remove('hidden');
+                lucide.createIcons();
+            }, 10);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const taste = parseInt(formData.get('taste'));
+            const value = parseInt(formData.get('value'));
+            const env = parseInt(formData.get('environment'));
+            
+            const newRecord = {
+                id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+                createdAt: new Date().toISOString(),
+                restaurantName: formData.get('restaurantName'),
+                dishName: formData.get('dishName'),
+                category: formData.get('category'),
+                content: formData.get('content'),
+                rating: { taste, value, environment: env },
+                averageRating: (taste + value + env) / 3,
+                authorName: "同學",
+                authorId: "local_user",
+                isAnonymous: false,
+                likes: [],
+                dislikes: [],
+                comments: [],
+                status: 'active'
+            };
+
+            saveData(newRecord);
+            e.target.reset();
+            closeModal();
+        }
+
+        // --- Init ---
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderList();
+        });
+
+        // Initialize UI
+        window.onload = () => {
+            renderList();
+            updateStats();
+            lucide.createIcons();
+        };
+
+    </script>
+</body>
+</html>
