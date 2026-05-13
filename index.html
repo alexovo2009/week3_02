@@ -190,7 +190,7 @@
 
     <!-- FAB -->
     <button onclick="openModal()" class="fixed bottom-10 right-10 bg-primary text-white px-8 py-4 rounded-full font-black text-lg flex items-center gap-2 fab-shadow hover:scale-105 transition-transform z-40">
-        <span>✍️</span> 發布食評
+        <span>✍️</span> 發佈食評
     </button>
 
     <!-- Modal Form -->
@@ -203,7 +203,7 @@
             <div class="p-8">
                 <div class="mb-8">
                     <h2 class="text-3xl font-black tracking-tight flex items-center gap-3">
-                        <span class="text-4xl">📝</span> 發布食評
+                        <span class="text-4xl">📝</span> 發佈食評
                     </h2>
                     <p class="text-text-sub font-bold mt-2 uppercase tracking-widest text-xs">Share your food experience</p>
                 </div>
@@ -287,7 +287,7 @@
                     </div>
 
                     <button type="submit" class="w-full py-5 bg-primary text-white rounded-3xl font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
-                        🚀 發布美味食評
+                        🚀 發佈美味食評
                     </button>
                 </form>
             </div>
@@ -295,12 +295,33 @@
     </div>
 
     <script>
+        // ========== Google Sheet 同步設定 ==========
+        // 部署 Apps Script 後，把網址貼到這裡（保留引號）
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmQGSTi4Be_PpkZeBbrrwd1JptbdcPiuJ-X3gHbGbT8zThyPQBW1AhRpK04G6cIB-O/exec";
+
+        // 同步輔助函數（傳送 action + 資料給 GAS）
+        function syncToSheet(payload) {
+            // 若尚未填寫網址，直接跳過
+            if (APPS_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE") return;
+            try {
+                fetch(APPS_SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify(payload)
+                }).catch(err => {
+                    console.warn("同步 Google Sheet 失敗，稍後會自動重試。", err);
+                });
+            } catch (e) {
+                console.warn("同步時發生錯誤", e);
+            }
+        }
+
         // --- State Management ---
         let currentStatusFilter = '全部';
         let currentCategory = '全部';
         let activeTab = 'feed';
         let searchQuery = '';
-        let openComments = new Set(); // Track expanded comment sections
+        let openComments = new Set();
         let userLikes = JSON.parse(localStorage.getItem('likes') || '[]');
         let userBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
 
@@ -324,6 +345,9 @@
             localStorage.setItem('records', JSON.stringify(records));
             renderList();
             updateStats();
+
+            // 同步至 Google Sheet
+            syncToSheet({ action: "create", record: newRecord });
         }
 
         function updateRecord(updatedRecord) {
@@ -334,6 +358,9 @@
                 localStorage.setItem('records', JSON.stringify(records));
                 renderList();
                 updateStats();
+
+                // 同步至 Google Sheet
+                syncToSheet({ action: "update", id: updatedRecord.id, record: updatedRecord });
             }
         }
 
@@ -342,6 +369,9 @@
             localStorage.setItem('records', JSON.stringify(records));
             renderList();
             updateStats();
+
+            // 同步至 Google Sheet
+            syncToSheet({ action: "delete", id: id });
         }
 
         function renderList() {
@@ -349,7 +379,6 @@
             const listContainer = document.getElementById('listContainer');
             const emptyState = document.getElementById('emptyState');
             
-            // Filtering
             const filtered = records.filter(r => {
                 const matchesSearch = r.dishName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                      r.restaurantName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -372,7 +401,6 @@
                 });
             }
 
-            // Refresh icons
             lucide.createIcons();
             renderCategories();
             renderStatsCount();
@@ -499,7 +527,6 @@
             document.getElementById('statDone').textContent = `Done: ${doneCount}`;
             document.getElementById('statTotal').textContent = `Total: ${totalCount}`;
 
-            // Button highlights - reset first
             ['filterActive', 'filterDone', 'filterAll'].forEach(id => {
                 const btn = document.getElementById(id);
                 btn.classList.remove('bg-sky-500', 'bg-emerald-500', 'bg-slate-800', 'text-white', 'border-sky-500', 'border-emerald-500', 'border-slate-800');
@@ -524,7 +551,6 @@
             const likedCount = userLikes.length;
             const bookmarkedCount = userBookmarks.length;
             
-            // Progress Percent based on Bookmarked
             const doneBookmarksCount = bookmarkedRecords.filter(r => r.status === 'done').length;
             const percent = bookmarkedCount > 0 ? Math.round((doneBookmarksCount / bookmarkedCount) * 100) : 0;
             
@@ -692,16 +718,13 @@
             containers.forEach(container => {
                 const input = container.querySelector('input');
                 
-                // Use event delegation on the container
                 container.onclick = (e) => {
-                    // Look for the clicked element or its parent with .star-input
                     const star = e.target.closest('.star-input');
                     if (!star) return;
 
                     const val = parseInt(star.getAttribute('data-value'));
                     input.value = val;
                     
-                    // Update visual state of all stars in this container
                     const allStars = container.querySelectorAll('.star-input');
                     allStars.forEach(s => {
                         const sVal = parseInt(s.getAttribute('data-value'));
@@ -748,7 +771,6 @@
             updateRecord(review);
             input.value = '';
             
-            // Re-open comments section if it was hidden (though it should be visible if they just typed)
             setTimeout(() => {
                 const section = document.getElementById(`comments-${reviewId}`);
                 section.classList.remove('hidden');
@@ -792,7 +814,6 @@
             renderList();
         });
 
-        // Initialize UI
         window.onload = () => {
             renderList();
             updateStats();
