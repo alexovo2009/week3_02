@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校園吐槽牆</title>
-    <script src="https://cdn.tailwindcss.com">
-    </script>
-    <script src="https://unpkg.com/lucide@latest">
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
@@ -216,9 +214,10 @@
 
     <script>
         // ========== Google Sheet 同步設定 ==========
+        // ⚠️ 請換成你真實嘅 Apps Script 部署網址
         const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
 
-        // ========== 欄位正規化 ==========
+        // ========== 欄位正規化（兼容 Sheet 大階 header） ==========
         function normalizeRecord(record) {
             return {
                 id: record.id || record.ID || "",
@@ -230,9 +229,21 @@
             };
         }
 
+        // ========== 將 record 轉成兼容 Sheet 大小階嘅格式 ==========
+        function makeRecordSheetCompatible(record) {
+            const compat = { ...record };
+            if (compat.id) compat.ID = compat.id;
+            if (compat.createdAt) compat.CreatedAt = compat.createdAt;
+            if (compat.content) compat.Content = compat.content;
+            if (compat.category) compat.Category = compat.category;
+            if (compat.likes !== undefined) compat.Likes = compat.likes;
+            if (compat.status) compat.Status = compat.status;
+            return compat;
+        }
+
         // ========== 從 Sheet 讀取 (只用 GET) ==========
         async function fetchRecordsFromSheet() {
-            if (APPS_SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbyZxj4qpjU6jR7EzbaSSckbEvMy48n--qlhreDKP5yJaNsSNLM11Mw8eMW1P9PWGUFr/exec")) return null;
+            if (APPS_SCRIPT_URL.includes("PASTE")) return null;
             try {
                 const res = await fetch(APPS_SCRIPT_URL);
                 const data = await res.json();
@@ -254,9 +265,13 @@
             return data ? JSON.parse(data) : [];
         }
 
-        // ========== 同步至 Sheet ==========
+        // ========== 同步至 Sheet（POST） ==========
         function syncToSheet(payload) {
             if (APPS_SCRIPT_URL.includes("PASTE")) return;
+            // 如果有 record，轉換大小階確保後端認得
+            if (payload.record) {
+                payload.record = makeRecordSheetCompatible(payload.record);
+            }
             try {
                 fetch(APPS_SCRIPT_URL, {
                     method: "POST",
@@ -368,11 +383,10 @@
 
         // ========== 統計與排行榜 ==========
         function renderStatsCount() {
-            // 簡單統計顯示
-            const total = document.querySelectorAll('#listContainer .masonry-item').length;
-            const activeCount = document.querySelectorAll('#listContainer .masonry-item .bg-gray-50').length; // 粗略判斷
-            const doneCount = total - activeCount;
-            // 僅更新側邊欄數字（若有的話）
+            const records = JSON.parse(localStorage.getItem('records') || '[]');
+            const total = records.length;
+            const activeCount = records.filter(r => r.status === 'active').length;
+            const doneCount = records.filter(r => r.status === 'done').length;
             const statGrid = document.getElementById('userStatsGrid');
             if (statGrid) {
                 statGrid.innerHTML = `
@@ -390,7 +404,6 @@
 
         function renderLeaderboard() {
             const container = document.getElementById('leaderboardList');
-            // 簡單 Top 6 likes
             const records = JSON.parse(localStorage.getItem('records') || '[]');
             const sorted = [...records].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 6);
             container.innerHTML = '';
@@ -413,23 +426,24 @@
             lucide.createIcons();
         }
 
-        // ========== 互動邏輯 ==========
+        // ========== 互動邏輯（修正：傳送完整 record 而唔係 changes） ==========
         async function handleLike(id) {
             const records = await loadData();
             const index = records.findIndex(r => r.id === id);
             if (index === -1) return;
 
+            const review = records[index];
             if (userLikes.includes(id)) {
-                // 取消讚
                 userLikes = userLikes.filter(l => l !== id);
-                records[index].likes = Math.max((records[index].likes || 1) - 1, 0);
+                review.likes = Math.max((review.likes || 1) - 1, 0);
             } else {
                 userLikes.push(id);
-                records[index].likes = (records[index].likes || 0) + 1;
+                review.likes = (review.likes || 0) + 1;
             }
             localStorage.setItem('likes', JSON.stringify(userLikes));
             localStorage.setItem('records', JSON.stringify(records));
-            syncToSheet({ action: "update", id: id, changes: { likes: records[index].likes } });
+            // 傳送完整 record 物件（唔係 changes）
+            syncToSheet({ action: "update", id: id, record: review });
             await renderList(records);
         }
 
@@ -439,7 +453,8 @@
             if (r) {
                 r.status = r.status === 'done' ? 'active' : 'done';
                 localStorage.setItem('records', JSON.stringify(records));
-                syncToSheet({ action: "update", id: id, changes: { status: r.status } });
+                // 傳送完整 record 物件
+                syncToSheet({ action: "update", id: id, record: r });
                 await renderList(records);
             }
         }
