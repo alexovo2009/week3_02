@@ -215,7 +215,7 @@
     <script>
         // ========== Google Sheet 同步設定 ==========
         // ⚠️ 請換成你真實嘅 Apps Script 部署網址
-        const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyeN0mxJ1fz4m-HR46Gl8YBYyIp8wppHVXkYVXGubOWDBEJPxCvXJ4s8v1YscTZhPij/exec";
 
         // ========== 欄位正規化（兼容 Sheet 大階 header） ==========
         function normalizeRecord(record) {
@@ -243,7 +243,7 @@
 
         // ========== 從 Sheet 讀取 (只用 GET) ==========
         async function fetchRecordsFromSheet() {
-            if (APPS_SCRIPT_URL.includes("PASTE")) return null;
+            if (APPS_SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbyeN0mxJ1fz4m-HR46Gl8YBYyIp8wppHVXkYVXGubOWDBEJPxCvXJ4s8v1YscTZhPij/exec")) return null;
             try {
                 const res = await fetch(APPS_SCRIPT_URL);
                 const data = await res.json();
@@ -267,7 +267,7 @@
 
         // ========== 同步至 Sheet（POST） ==========
         function syncToSheet(payload) {
-            if (APPS_SCRIPT_URL.includes("PASTE")) return;
+            if (APPS_SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbyeN0mxJ1fz4m-HR46Gl8YBYyIp8wppHVXkYVXGubOWDBEJPxCvXJ4s8v1YscTZhPij/exec")) return;
             // 如果有 record，轉換大小階確保後端認得
             if (payload.record) {
                 payload.record = makeRecordSheetCompatible(payload.record);
